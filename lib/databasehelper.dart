@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -30,27 +29,35 @@ class DatabaseHelper {
     if (_database != null) return _database!;
     
     try {
-      String path = 'D:/SQLiteDatabaseBrowserPortable/Data/code_snippets.db';
-      _log.info('Initializing database at: $path');
-      
-      // Create directory if it doesn't exist
-      try {
-        var dir = Directory('D:/SQLiteDatabaseBrowserPortable/Data');
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-          _log.info('Database directory created');
-        } else {
-          _log.info('Database directory already exists');
+      String path;
+      if (kIsWeb) {
+        // On the web we cannot access the local filesystem. Use a simple
+        // filename so sqflite_common_ffi_web stores the DB in IndexedDB.
+        path = 'code_snippets.db';
+        _log.info('Running on web - using IndexedDB filename: $path');
+      } else {
+        path = 'D:/SQLiteDatabaseBrowserPortable/Data/code_snippets.db';
+        _log.info('Initializing database at: $path');
+
+        // Create directory if it doesn't exist (desktop/mobile only)
+        try {
+          var dir = Directory('D:/SQLiteDatabaseBrowserPortable/Data');
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+            _log.info('Database directory created');
+          } else {
+            _log.info('Database directory already exists');
+          }
+          _log.info('Directory path: ${dir.absolute.path}');
+
+          // List directory contents for debugging
+          await for (var entity in dir.list()) {
+            _log.info('Found in directory: ${entity.path}');
+          }
+        } catch (e) {
+          _log.severe('Error accessing/creating database directory: $e');
+          throw Exception('Cannot access/create database directory: $e');
         }
-        _log.info('Directory path: ${dir.absolute.path}');
-        
-        // List directory contents
-        await for (var entity in dir.list()) {
-          _log.info('Found in directory: ${entity.path}');
-        }
-      } catch (e) {
-        _log.severe('Error accessing/creating database directory: $e');
-        throw Exception('Cannot access/create database directory: $e');
       }
 
       _database = await openDatabase(
